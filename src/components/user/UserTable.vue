@@ -38,7 +38,7 @@ const handleNextClick = async (page: number) => {
 
 const searchClick = async () => {
   userState.currentPage = 1
-  await userState.fetchUserList()
+  await userState.fetchUserList({ username__icontains: userState.searchBox })
 }
 const handleEdit = (index: number, row: User) => {
   router.push('/manage/user/detail/' + row.id)
@@ -75,6 +75,16 @@ const handleSelectionChange = (val: User[]) => {
   multipleSelection.value = val
   console.log(multipleSelection.value)
 }
+
+const handleSortChange = async (data: { column: any; prop: string; order: any }) => {
+  console.log(data)
+  let orderParam = data.prop
+  if (data.order === 'descending') {
+    orderParam = '-' + orderParam
+  }
+  userState.sortParam = orderParam
+  await userState.fetchUserList()
+}
 </script>
 
 <template>
@@ -96,9 +106,10 @@ const handleSelectionChange = (val: User[]) => {
         border
         height="100%"
         @selection-change="handleSelectionChange"
+        @sort-change="handleSortChange"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="id" label="ID" align="center" :width="50" />
+        <el-table-column prop="id" label="ID" align="center" sortable :width="50" />
         <el-table-column prop="photo" label="头像" width="80" align="center">
           <template #default="scope">
             <el-avatar
@@ -111,7 +122,7 @@ const handleSelectionChange = (val: User[]) => {
             <el-avatar shape="square" fit="cover" v-else :size="40" :src="state.squareUrl" />
           </template>
         </el-table-column>
-        <el-table-column prop="username" label="用户名" align="center" />
+        <el-table-column prop="username" label="用户名" sortable align="center" />
         <el-table-column prop="phone" label="手机号" align="center" />
         <el-table-column
           prop="last_login"

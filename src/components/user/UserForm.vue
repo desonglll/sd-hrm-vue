@@ -11,10 +11,12 @@ import { useGroupStore } from '@/stores/group.ts'
 import { localizePermissions } from '@/models/permission.ts'
 import { useUserStore } from '@/stores/user.ts'
 import router from '@/router'
+import { useAuthStore } from '@/stores/auth.ts'
 
 const permissionState = usePermissionStore()
 const groupState = useGroupStore()
 const userState = useUserStore()
+const authState = useAuthStore()
 
 const localizedPermissions = ref()
 
@@ -87,7 +89,8 @@ const onSubmit = async () => {
   try {
     if (user.id == 0) {
       // 🔵 创建新用户
-      await userState.createUser(data)
+      const newUser = await userState.createUser(data)
+      await userState.resetPassword(newUser.id, '12345678')
       ElMessage.success('创建成功')
       router.back()
     } else {
@@ -120,7 +123,7 @@ const filterMethod = (query: any, item: any) => {
       >
         <img
           v-if="avatarPreviewUrl"
-          :src="backendUrl + avatarPreviewUrl"
+          :src="avatarPreviewUrl"
           class="avatar h-200"
           :alt="user.username"
         />
@@ -158,16 +161,16 @@ const filterMethod = (query: any, item: any) => {
       />
     </el-form-item>
 
-    <el-form-item label="是否为超级管理员" v-if="userState.user?.is_superuser">
+    <el-form-item label="是否为超级管理员" v-if="authState.loggedInUser?.is_superuser">
       <el-switch v-model="user.is_superuser" />
     </el-form-item>
-    <el-form-item label="是否活跃" v-if="userState.user?.is_superuser">
+    <el-form-item label="是否活跃" v-if="authState.loggedInUser?.is_superuser">
       <el-switch v-model="user.is_active" />
     </el-form-item>
-    <el-form-item label="是否可以登陆网站" v-if="userState.user?.is_superuser">
+    <el-form-item label="是否可以登陆网站" v-if="authState.loggedInUser?.is_superuser">
       <el-switch v-model="user.is_staff" />
     </el-form-item>
-    <el-form-item label="用户权限" v-if="userState.user?.is_superuser">
+    <el-form-item label="用户权限" v-if="authState.loggedInUser?.is_superuser">
       <el-transfer
         :titles="['所有权限', '已有权限']"
         v-model="user.user_permissions"
@@ -197,7 +200,7 @@ const filterMethod = (query: any, item: any) => {
         </template>
       </el-transfer>
     </el-form-item>
-    <el-form-item label="用户组" v-if="userState.user?.is_superuser">
+    <el-form-item label="用户组" v-if="authState.loggedInUser?.is_superuser">
       <el-transfer
         :titles="['所有组', '已在组']"
         v-model="user.groups"

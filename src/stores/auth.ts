@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
 import { deleteAuthToken, refreshToken, setAuthToken } from '@/apis/auth.ts'
 import api from '@/apis/http.ts'
+import type { User } from '@/models/user.ts'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
+    loggedInUser: null as User | null,
     accessToken: localStorage.getItem('access') || '',
     refreshToken: localStorage.getItem('refreshToken') || '',
     isLoggedIn: false,
@@ -38,7 +40,27 @@ export const useAuthStore = defineStore('auth', {
         console.log('Bearer set failed')
       }
     },
-
+    async fetchUserInfo() {
+      const authState = useAuthStore()
+      try {
+        const res = await api.get('/api/user/me/')
+        if (res) {
+          this.loggedInUser = res.data
+        }
+      } catch (err: any) {
+        if (err.response?.status === 403) {
+          const newAccess = await authState.tryRefreshToken()
+          if (newAccess) {
+            const res = await api.get('/api/user/me/')
+            this.loggedInUser = res.data
+          } else {
+            this.logout()
+          }
+        } else {
+          throw err
+        }
+      }
+    },
     async tryRefreshToken() {
       try {
         const res = await refreshToken(this.refreshToken)

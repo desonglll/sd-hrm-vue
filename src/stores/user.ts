@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { deleteAuthToken } from '@/apis/auth.ts'
-import { getUserInfo } from '@/apis/user.ts'
 import api from '@/apis/http.ts'
 import type { User } from '@/models/user.ts'
 import { useAuthStore } from '@/stores/auth.ts'
@@ -8,12 +7,12 @@ import type { AxiosError } from 'axios'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    user: null as User | null,
     users: null as User[] | null,
     count: 0,
     currentPage: 1,
     pageSize: 10,
     searchBox: '',
+    sortParam: '',
   }),
   persist: true,
   actions: {
@@ -29,32 +28,10 @@ export const useUserStore = defineStore('user', {
       }
     },
 
-    async fetchUserInfo() {
-      const authState = useAuthStore()
-      try {
-        const res = await getUserInfo()
-        if (res) {
-          this.user = res.data
-        }
-      } catch (err: any) {
-        if (err.response?.status === 403) {
-          const newAccess = await authState.tryRefreshToken()
-          if (newAccess) {
-            const res = await getUserInfo()
-            this.user = res?.data
-          } else {
-            this.logout()
-          }
-        } else {
-          throw err
-        }
-      }
-    },
-
     async deleteUserById(id: number): Promise<boolean> {
       const authState = useAuthStore()
       try {
-        const res = await api.delete(`users/${id}/`)
+        const res = await api.delete(`api/users/${id}/`)
         if (res) {
           await this.fetchUserList()
           return true
@@ -64,7 +41,7 @@ export const useUserStore = defineStore('user', {
         if (err.response?.status === 403) {
           const newAccess = await authState.tryRefreshToken()
           if (newAccess) {
-            const res = await api.delete(`users/${id}/`)
+            const res = await api.delete(`api/users/${id}/`)
             if (res) {
               await this.fetchUserList()
               return true
@@ -82,7 +59,7 @@ export const useUserStore = defineStore('user', {
     async getUserById(id: number) {
       const authState = useAuthStore()
       try {
-        const res = await api.get(`users/${id}/`)
+        const res = await api.get(`api/users/${id}/`)
         if (res) {
           return res.data
         }
@@ -90,7 +67,7 @@ export const useUserStore = defineStore('user', {
         if (err.response?.status === 403) {
           const newAccess = await authState.tryRefreshToken()
           if (newAccess) {
-            const res = await api.get(`users/${id}/`)
+            const res = await api.get(`api/users/${id}/`)
             if (res) {
               return res.data
             }
@@ -102,15 +79,18 @@ export const useUserStore = defineStore('user', {
         }
       }
     },
-    async fetchUserList() {
+    async fetchUserList(extraParams: Record<string, any> = {}) {
       const authState = useAuthStore()
+      const params = {
+        page: this.currentPage,
+        page_size: this.pageSize,
+        username__icontains: this.searchBox,
+        ordering: this.sortParam,
+        ...extraParams,
+      }
       try {
-        const res = await api.get('/users/', {
-          params: {
-            username__icontains: this.searchBox,
-            page: this.currentPage,
-            page_size: this.pageSize,
-          },
+        const res = await api.get('api/users/', {
+          params: params,
         })
         if (res) {
           this.users = res.data.results
@@ -120,11 +100,8 @@ export const useUserStore = defineStore('user', {
         if (err.response?.status === 403) {
           const newAccess = await authState.tryRefreshToken()
           if (newAccess) {
-            const res = await api.get('/users/', {
-              params: {
-                page: this.currentPage,
-                page_size: this.pageSize,
-              },
+            const res = await api.get('api/users/', {
+              params: params,
             })
             if (res) {
               this.users = res.data.results
@@ -143,7 +120,7 @@ export const useUserStore = defineStore('user', {
       const authState = useAuthStore()
 
       try {
-        const res = await api.post(`/users/`, user, {
+        const res = await api.post(`/api/users/`, user, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -156,7 +133,7 @@ export const useUserStore = defineStore('user', {
         if (err.response?.status === 403) {
           const newAccess = await authState.tryRefreshToken()
           if (newAccess) {
-            const res = await api.post(`/users/`, user, {
+            const res = await api.post(`/api/users/`, user, {
               headers: {
                 'Content-Type': 'multipart/form-data',
               },
@@ -173,10 +150,41 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    async resetPassword(id: number, newPassword: string) {
+      const authState = useAuthStore()
+      try {
+        const res = await api.post(`/api/reset_password/`, {
+          id: id,
+          new_password: newPassword,
+        })
+        if (res) {
+          return res.data
+        }
+      } catch (err: any) {
+        err = err as AxiosError
+        if (err.response?.status === 403) {
+          const newAccess = await authState.tryRefreshToken()
+          if (newAccess) {
+            const res = await api.post(`/api/reset_password/`, {
+              id: id,
+              new_password: newPassword,
+            })
+            if (res) {
+              return res.data
+            }
+          } else {
+            this.logout()
+          }
+        } else {
+          throw err
+        }
+      }
+    },
+
     async updateUser(id: number, user: any) {
       const authState = useAuthStore()
       try {
-        const res = await api.put(`/users/${id}/`, user, {
+        const res = await api.put(`api/users/${id}/`, user, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -189,7 +197,7 @@ export const useUserStore = defineStore('user', {
         if (err.response?.status === 403) {
           const newAccess = await authState.tryRefreshToken()
           if (newAccess) {
-            const res = await api.put(`/users/${id}/`, user, {
+            const res = await api.put(`api/users/${id}/`, user, {
               headers: {
                 'Content-Type': 'multipart/form-data',
               },
@@ -207,7 +215,6 @@ export const useUserStore = defineStore('user', {
     },
 
     logout() {
-      this.user = null
       localStorage.removeItem('access')
       localStorage.removeItem('refresh')
       deleteAuthToken()

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { getGroupList } from '@/apis/user.ts'
 import type { Group } from '@/models/user.ts'
-import { useUserStore } from '@/stores/user.ts'
+import api from '@/apis/http.ts'
+import { useAuthStore } from '@/stores/auth.ts'
 
 export const useGroupStore = defineStore('group', {
   state: () => ({
@@ -11,20 +11,20 @@ export const useGroupStore = defineStore('group', {
   persist: true,
   actions: {
     async fetchGroupList() {
-      const userState = useUserStore()
+      const authState = useAuthStore()
       try {
-        const res = await getGroupList()
+        const res = await api.get('api/groups/')
         if (res) {
           this.groups = res.data.results
         }
       } catch (err: any) {
         if (err.response?.status === 403) {
-          const newAccess = await userState.tryRefreshToken()
+          const newAccess = await authState.tryRefreshToken()
           if (newAccess) {
-            const res = await getGroupList()
-            this.groups = res?.data.results
+            const res = await api.get('api/groups/')
+            this.groups = res.data.results
           } else {
-            userState.logout()
+            authState.logout()
           }
         } else {
           throw err

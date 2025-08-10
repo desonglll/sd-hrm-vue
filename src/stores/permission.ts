@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { getPermissionList } from '@/apis/user.ts'
 import type { Permission } from '@/models/user.ts'
 import { useAuthStore } from '@/stores/auth.ts'
+import api from '@/apis/http.ts'
 
 export const usePermissionStore = defineStore('permission', {
   state: () => ({
@@ -13,7 +13,7 @@ export const usePermissionStore = defineStore('permission', {
     async fetchPermissionList() {
       const authState = useAuthStore()
       try {
-        const res = await getPermissionList()
+        const res = await api.get('api/permissions/')
         if (res) {
           this.permissions = res.data.results
         }
@@ -21,8 +21,10 @@ export const usePermissionStore = defineStore('permission', {
         if (err.response?.status === 403) {
           const newAccess = await authState.tryRefreshToken()
           if (newAccess) {
-            const res = await getPermissionList()
-            this.permissions = res?.data.results
+            const res = await api.get('api/permissions/')
+            if (res) {
+              this.permissions = res.data.results
+            }
           } else {
             authState.logout()
           }

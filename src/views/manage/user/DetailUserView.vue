@@ -16,7 +16,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <UserForm :user="user" v-if="user" />
+  <div class="w-full flex place-content-center place-items-center">
+    <div class="w-[50%]">
+    <UserForm :user="user" v-if="user" />
+    </div>
+  </div>
 </template>
 
 <style scoped></style>
